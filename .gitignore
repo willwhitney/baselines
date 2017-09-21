@@ -30,3 +30,8 @@ src
 
 *.egg-info
 .cache
+
+.vscode/
+results/
+**.mat
+**.npz
