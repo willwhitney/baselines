@@ -44,10 +44,10 @@ class gridworld:
         p_s = np.zeros((self.n_states, self.n_states))
         p_e = np.zeros((self.n_states, self.n_states))
         p_w = np.zeros((self.n_states, self.n_states))
-        p_ne = np.zeros((self.n_states, self.n_states))
-        p_nw = np.zeros((self.n_states, self.n_states))
-        p_se = np.zeros((self.n_states, self.n_states))
-        p_sw = np.zeros((self.n_states, self.n_states))
+        # p_ne = np.zeros((self.n_states, self.n_states))
+        # p_nw = np.zeros((self.n_states, self.n_states))
+        # p_se = np.zeros((self.n_states, self.n_states))
+        # p_sw = np.zeros((self.n_states, self.n_states))
 
         R = -1 * np.ones((self.n_states, self.n_actions))
         R[:, 4:self.n_actions] = R[:, 4:self.n_actions] * np.sqrt(2)
@@ -74,21 +74,18 @@ class gridworld:
                                                     neighbor_inds[2]] + 1
                 p_w[curpos, neighbor_inds[3]] = p_w[curpos,
                                                     neighbor_inds[3]] + 1
-                p_ne[curpos, neighbor_inds[4]] = p_ne[curpos,
-                                                      neighbor_inds[4]] + 1
-                p_nw[curpos, neighbor_inds[5]] = p_nw[curpos,
-                                                      neighbor_inds[5]] + 1
-                p_se[curpos, neighbor_inds[6]] = p_se[curpos,
-                                                      neighbor_inds[6]] + 1
-                p_sw[curpos, neighbor_inds[7]] = p_sw[curpos,
-                                                      neighbor_inds[7]] + 1
+                # p_ne[curpos, neighbor_inds[4]] = p_ne[curpos,
+                #                                       neighbor_inds[4]] + 1
+                # p_nw[curpos, neighbor_inds[5]] = p_nw[curpos,
+                #                                       neighbor_inds[5]] + 1
+                # p_se[curpos, neighbor_inds[6]] = p_se[curpos,
+                #                                       neighbor_inds[6]] + 1
+                # p_sw[curpos, neighbor_inds[7]] = p_sw[curpos,
+                #                                       neighbor_inds[7]] + 1
 
-        G = np.logical_or.reduce((p_n, p_s, p_e, p_w,
-                                  p_ne, p_nw, p_se, p_sw))
+        G = np.logical_or.reduce((p_n, p_s, p_e, p_w))
 
-        W = np.maximum(np.maximum(np.maximum(np.maximum(np.maximum(
-            np.maximum(np.maximum(p_n, p_s), p_e), p_w), np.sqrt(2) * p_ne),
-            np.sqrt(2) * p_nw), np.sqrt(2) * p_se), np.sqrt(2) * p_sw)
+        W = np.maximum(np.maximum(np.maximum(p_n, p_s), p_e), p_w)
 
         non_obstacles = np.ravel_multi_index([self.freespace[0],
                                               self.freespace[1]], (self.n_row, self.n_col), order='F')
@@ -102,22 +99,21 @@ class gridworld:
         p_e = np.expand_dims(p_e[:, non_obstacles], axis=2)
         p_w = p_w[non_obstacles, :]
         p_w = np.expand_dims(p_w[:, non_obstacles], axis=2)
-        p_ne = p_ne[non_obstacles, :]
-        p_ne = np.expand_dims(p_ne[:, non_obstacles], axis=2)
-        p_nw = p_nw[non_obstacles, :]
-        p_nw = np.expand_dims(p_nw[:, non_obstacles], axis=2)
-        p_se = p_se[non_obstacles, :]
-        p_se = np.expand_dims(p_se[:, non_obstacles], axis=2)
-        p_sw = p_sw[non_obstacles, :]
-        p_sw = np.expand_dims(p_sw[:, non_obstacles], axis=2)
+        # p_ne = p_ne[non_obstacles, :]
+        # p_ne = np.expand_dims(p_ne[:, non_obstacles], axis=2)
+        # p_nw = p_nw[non_obstacles, :]
+        # p_nw = np.expand_dims(p_nw[:, non_obstacles], axis=2)
+        # p_se = p_se[non_obstacles, :]
+        # p_se = np.expand_dims(p_se[:, non_obstacles], axis=2)
+        # p_sw = p_sw[non_obstacles, :]
+        # p_sw = np.expand_dims(p_sw[:, non_obstacles], axis=2)
         G = G[non_obstacles, :]
         G = G[:, non_obstacles]
         W = W[non_obstacles, :]
         W = W[:, non_obstacles]
         R = R[non_obstacles, :]
 
-        P = np.concatenate((p_n, p_s, p_e, p_w,
-                            p_ne, p_nw, p_se, p_sw), axis=2)
+        P = np.concatenate((p_n, p_s, p_e, p_w), axis=2)
 
         self.G = G
         self.W = W
@@ -233,25 +229,25 @@ class gridworld:
             new_col = col
         return new_row, new_col
 
-    def northeast(self, row, col):
-        # Returns new [row,col]
-        #  if we take the action
-        new_row = np.max([row - 1, 0])
-        new_col = np.min([col + 1, self.n_col - 1])
-        if self.image[new_row, new_col] == 0:
-            new_row = row
-            new_col = col
-        return new_row, new_col
+    # def northeast(self, row, col):
+    #     # Returns new [row,col]
+    #     #  if we take the action
+    #     new_row = np.max([row - 1, 0])
+    #     new_col = np.min([col + 1, self.n_col - 1])
+    #     if self.image[new_row, new_col] == 0:
+    #         new_row = row
+    #         new_col = col
+    #     return new_row, new_col
 
-    def northwest(self, row, col):
-        # Returns new [row,col]
-        #  if we take the action
-        new_row = np.max([row - 1, 0])
-        new_col = np.max([col - 1, 0])
-        if self.image[new_row, new_col] == 0:
-            new_row = row
-            new_col = col
-        return new_row, new_col
+    # def northwest(self, row, col):
+    #     # Returns new [row,col]
+    #     #  if we take the action
+    #     new_row = np.max([row - 1, 0])
+    #     new_col = np.max([col - 1, 0])
+    #     if self.image[new_row, new_col] == 0:
+    #         new_row = row
+    #         new_col = col
+    #     return new_row, new_col
 
     def south(self, row, col):
         # Returns new [row,col]
@@ -263,25 +259,25 @@ class gridworld:
             new_col = col
         return new_row, new_col
 
-    def southeast(self, row, col):
-        # Returns new [row,col]
-        #  if we take the action
-        new_row = np.min([row + 1, self.n_row - 1])
-        new_col = np.min([col + 1, self.n_col - 1])
-        if self.image[new_row, new_col] == 0:
-            new_row = row
-            new_col = col
-        return new_row, new_col
+    # def southeast(self, row, col):
+    #     # Returns new [row,col]
+    #     #  if we take the action
+    #     new_row = np.min([row + 1, self.n_row - 1])
+    #     new_col = np.min([col + 1, self.n_col - 1])
+    #     if self.image[new_row, new_col] == 0:
+    #         new_row = row
+    #         new_col = col
+    #     return new_row, new_col
 
-    def southwest(self, row, col):
-        # Returns new [row,col]
-        #  if we take the action
-        new_row = np.min([row + 1, self.n_row - 1])
-        new_col = np.max([col - 1, 0])
-        if self.image[new_row, new_col] == 0:
-            new_row = row
-            new_col = col
-        return new_row, new_col
+    # def southwest(self, row, col):
+    #     # Returns new [row,col]
+    #     #  if we take the action
+    #     new_row = np.min([row + 1, self.n_row - 1])
+    #     new_col = np.max([col - 1, 0])
+    #     if self.image[new_row, new_col] == 0:
+    #         new_row = row
+    #         new_col = col
+    #     return new_row, new_col
 
     def east(self, row, col):
         # Returns new [row,col]
@@ -312,14 +308,14 @@ class gridworld:
         rows, cols = np.append(rows, new_row), np.append(cols, new_col)
         new_row, new_col = self.west(row, col)
         rows, cols = np.append(rows, new_row), np.append(cols, new_col)
-        new_row, new_col = self.northeast(row, col)
-        rows, cols = np.append(rows, new_row), np.append(cols, new_col)
-        new_row, new_col = self.northwest(row, col)
-        rows, cols = np.append(rows, new_row), np.append(cols, new_col)
-        new_row, new_col = self.southeast(row, col)
-        rows, cols = np.append(rows, new_row), np.append(cols, new_col)
-        new_row, new_col = self.southwest(row, col)
-        rows, cols = np.append(rows, new_row), np.append(cols, new_col)
+        # new_row, new_col = self.northeast(row, col)
+        # rows, cols = np.append(rows, new_row), np.append(cols, new_col)
+        # new_row, new_col = self.northwest(row, col)
+        # rows, cols = np.append(rows, new_row), np.append(cols, new_col)
+        # new_row, new_col = self.southeast(row, col)
+        # rows, cols = np.append(rows, new_row), np.append(cols, new_col)
+        # new_row, new_col = self.southwest(row, col)
+        # rows, cols = np.append(rows, new_row), np.append(cols, new_col)
         return rows, cols
 
 

@@ -273,6 +273,13 @@ def learn(env, policy_func, *,
         lenbuffer.extend(lens)
         rewbuffer.extend(rews)
 
+        # import ipdb; ipdb.set_trace()
+        # env is the multiply-wrapped <Monitor<TimeLimit<StatefulEnv<GridWorld-v0>>>>
+        if np.mean(rewbuffer) > 1 - (env.env.env.max_difficulty) / 35:
+            env.env.env.advance_curriculum()
+            print("Increasing the difficulty to " +
+                  str(env.env.env.max_difficulty))
+
         logger.record_tabular("EpLenMean", np.mean(lenbuffer))
         logger.record_tabular("EpRewMean", np.mean(rewbuffer))
         logger.record_tabular("EpThisIter", len(lens))

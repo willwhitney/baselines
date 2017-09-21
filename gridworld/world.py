@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import pdb
+import ipdb
 from numpy import unravel_index
 import random
 import gym
@@ -79,13 +80,13 @@ class Environment(nn.Module):
 
 class StatefulEnv(core.Env):
     def __init__(self, flatten=False):
-        size = 16
+        size = 8
         dataset = GridworldData(
             'gridworld/gridworld_{}x{}.npz'.format(size, size), 
             imsize=size, train=True, transform=None)
         self.dataset = dataset
         self.flatten = flatten
-        self.action_space = spaces.Discrete(size)
+        self.action_space = spaces.Discrete(4)
 
         if flatten:
             img_dims = 3 * size * size
@@ -123,33 +124,30 @@ class StatefulEnv(core.Env):
             reward = -0.01
 
         self.agent_loc = new_location
-        return self._get_obs(), reward, done, {}
 
-    def get_value_map(self):
-        w = self.world
-        # get goal
-        row = torch.max(torch.max(w[1], 0)[1])
-        col = torch.max(torch.max(w[1], 1)[1])
-        M=gridworld(1-w[1].cpu().numpy(), row, col)
-        goal_s = M.map_ind_to_state(M.targetx, M.targety)
-        G, W = M.get_graph_inv()
-        g_dense = W
-        g_sparse = csr_matrix(g_dense)
-        d, pred = dijkstra(g_sparse, indices=goal_s, return_predecessors=True)
-        return d, pred
+        # print("Distance: ", self.get_current_distance())
+        # print("Action: ", action)
+        # print(self._get_human_obs())
+        # ipdb.set_trace()
+
+        return self._get_obs(), reward, done, {}
 
     def get_current_distance(self):
         w = self.world
         # get goal
         row = torch.max(torch.max(w[1], 0)[1])
         col = torch.max(torch.max(w[1], 1)[1])
-        M = gridworld(1 - w[1].cpu().numpy(), row, col)
+        gridworld_walls = 1 - w[0]
+        M = gridworld(gridworld_walls.cpu().numpy(), row, col)
         goal_s = M.map_ind_to_state(M.targetx, M.targety)
         G, W = M.get_graph_inv()
         g_dense = W
         g_sparse = csr_matrix(g_dense)
         d, pred = dijkstra(g_sparse, indices=goal_s, return_predecessors=True)
-        return d[self.agent_loc[0], self.agent_loc[1]]
+
+        current_loc_index = M.map_ind_to_state(self.agent_loc[0],
+                                                self.agent_loc[1])
+        return d[current_loc_index]
 
     def advance_curriculum(self):
         self.max_difficulty += 1
@@ -158,20 +156,39 @@ class StatefulEnv(core.Env):
         agent_map = self.world[0].clone().zero_()
         agent_map[self.agent_loc[0], self.agent_loc[1]] = 1
         full_obs = torch.cat([self.world, agent_map.unsqueeze(0)], 0)
+        
+        # agent_map[self.agent_loc[0], self.agent_loc[1]] = -10
+        # full_obs = torch.cat([self.world, agent_map.unsqueeze(0)], 0)
+        # full_obs = torch.sum(full_obs, 0)
+
         if self.flatten:
             full_obs.resize_(int(torch.Tensor(list(full_obs.size())).prod()))
         else:
             full_obs.transpose_(0, 1).transpose_(1,2)
+        # return full_obs.cpu().numpy().transpose()
         return full_obs.cpu().numpy()
 
+    def _get_human_obs(self):
+        agent_map = self.world[0].clone().zero_()
+        
+        agent_map[self.agent_loc[0], self.agent_loc[1]] = 100
+        full_obs = torch.cat([self.world, agent_map.unsqueeze(0)], 0)
+        full_obs = torch.sum(full_obs, 0)
+
+        return full_obs
+
     def _reset(self):
-        self.index += 1
+        self.index = random.randint(0, len(self.dataset))
         self.world = self.dataset[self.index % len(self.dataset)][0]
         self.agent_loc = self.dataset[self.index % len(self.dataset)][1]
-        # if self.get_current_distance() > self.max_difficulty:
-        #     return self._reset()
+        # ipdb.set_trace()
+        if self.get_current_distance() > self.max_difficulty:
+            self._reset()
         # else:
-        #     return self._get_obs()
+            # return self._get_obs()
+        # print("Distance: ", self.get_current_distance())
+        # print(self._get_human_obs())
+        # ipdb.set_trace()
         return self._get_obs()
 
     def _render(self, *args, **kwargs):

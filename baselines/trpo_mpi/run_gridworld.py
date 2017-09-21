@@ -52,7 +52,7 @@ def train(env_id, num_frames, seed):
     trpo_mpi.learn(env, policy_fn,
                    timesteps_per_batch=512, max_kl=0.001, cg_iters=10, cg_damping=1e-3,
                    max_timesteps=num_timesteps, gamma=0.9, lam=0.99, vf_iters=3,
-                   vf_stepsize=1e-4, entcoeff=0.01)
+                   vf_stepsize=1e-4, entcoeff=0.0)
     # trpo_mpi.learn(env, policy_fn, timesteps_per_batch=512, max_kl=0.001, cg_iters=10, cg_damping=1e-3,
     #     max_timesteps=num_timesteps, gamma=0.98, lam=1.0, vf_iters=3, vf_stepsize=1e-4, entcoeff=0.00)
     env.close()
