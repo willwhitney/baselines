@@ -91,6 +91,7 @@ def learn(env, policy_func, *,
         callback=None
         ):
     nworkers = MPI.COMM_WORLD.Get_size()
+    print("Using {} workers.".format(nworkers))
     rank = MPI.COMM_WORLD.Get_rank()
     np.set_printoptions(precision=3)    
     # Setup losses and stuff
@@ -180,8 +181,8 @@ def learn(env, policy_func, *,
     timesteps_so_far = 0
     iters_so_far = 0
     tstart = time.time()
-    lenbuffer = deque(maxlen=40) # rolling buffer for episode lengths
-    rewbuffer = deque(maxlen=40) # rolling buffer for episode rewards
+    lenbuffer = deque(maxlen=1024) # rolling buffer for episode lengths
+    rewbuffer = deque(maxlen=1024) # rolling buffer for episode rewards
 
     assert sum([max_iters>0, max_timesteps>0, max_episodes>0])==1
 
@@ -266,7 +267,22 @@ def learn(env, policy_func, *,
                     vfadam.update(g, vf_stepsize)
 
         logger.record_tabular("ev_tdlam_before", explained_variance(vpredbefore, tdlamret))
+        logger.record_tabular("EpDifficulty", env.env.env.max_difficulty)
 
+        zipped_rewards = list(zip(seg['new'], seg['rew']))
+        episode_successes = []
+        for i in range(len(zipped_rewards) - 1):
+            # if the next step starts a new episode, ie this is the last step:
+            if zipped_rewards[i + 1][0] == 1:
+                # episode was a success if it ends in a reward,
+                # otherwise a failure
+                success = 1 if zipped_rewards[i][1] > 0 else 0
+                episode_successes.append(success)
+        accuracy = sum(episode_successes) / len(episode_successes)
+        logger.record_tabular("EpAccuracy", accuracy)
+            
+
+        # import ipdb; ipdb.set_trace()
         lrlocal = (seg["ep_lens"], seg["ep_rets"]) # local values
         listoflrpairs = MPI.COMM_WORLD.allgather(lrlocal) # list of tuples
         lens, rews = map(flatten_lists, zip(*listoflrpairs))
@@ -274,8 +290,9 @@ def learn(env, policy_func, *,
         rewbuffer.extend(rews)
 
         # import ipdb; ipdb.set_trace()
-        # env is the multiply-wrapped <Monitor<TimeLimit<StatefulEnv<GridWorld-v0>>>>
-        if np.mean(rewbuffer) > 1 - (env.env.env.max_difficulty) / 35:
+        # env is the multiply-wrapped:
+        # <Monitor<TimeLimit<StatefulEnv<GridWorld-v0>>>>
+        if np.mean(rewbuffer) >= 1 - (env.env.env.max_difficulty) / 35:
             env.env.env.advance_curriculum()
             print("Increasing the difficulty to " +
                   str(env.env.env.max_difficulty))

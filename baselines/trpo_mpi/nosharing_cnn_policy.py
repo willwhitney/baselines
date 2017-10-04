@@ -60,6 +60,8 @@ class CnnPolicy(object):
 class SmallCnnPolicy(CnnPolicy):
     def _init(self, ob_space, ac_space):
         assert isinstance(ob_space, gym.spaces.Box)
+        
+        big = (ob_space.low.shape[0] > 8)
 
         self.pdtype = pdtype = make_pdtype(ac_space)
         sequence_length = None
@@ -75,10 +77,17 @@ class SmallCnnPolicy(CnnPolicy):
             # x = tf.nn.max_pool(x, (2,2), (1,1), padding="VALID")
             x = layers.max_pooling2d(x, pool_size=[2,2], strides=1)
             x = tf.nn.relu(U.conv2d(x, 100, "l2", pad="VALID"))
-            # x = tf.nn.max_pool(x, (2,2), (1,1), padding="VALID")
             x = layers.max_pooling2d(x, pool_size=[2,2], strides=1)
+            if big:
+                x = tf.nn.relu(U.conv2d(x, 100, "l3", pad="VALID"))
+
             x = U.flattenallbut0(x)
-            x = tf.nn.relu(U.dense(x, 100, 'lin', U.normc_initializer(1.0)))
+            if big:
+                x = tf.nn.relu(U.dense(x, 200, 'lin1', U.normc_initializer(1.0)))
+                x = tf.nn.relu(U.dense(x, 100, 'lin2', U.normc_initializer(1.0)))
+            else:
+                x = tf.nn.relu(U.dense(x, 100, 'lin1', U.normc_initializer(1.0)))
+
             logits = U.dense(x, pdtype.param_shape()[
                              0], "logits", U.normc_initializer(0.01))
             self.pd = pdtype.pdfromflat(logits)
@@ -86,12 +95,21 @@ class SmallCnnPolicy(CnnPolicy):
             x = obscaled
             x = tf.nn.relu(U.conv2d(x, 50, "l1", pad="VALID"))
             # x = tf.nn.max_pool(x, (2,2), (1,1), padding="VALID")
-            x = layers.max_pooling2d(x, pool_size=[2,2], strides=1)
+            x = layers.max_pooling2d(x, pool_size=[2, 2], strides=1)
             x = tf.nn.relu(U.conv2d(x, 100, "l2", pad="VALID"))
-            # x = tf.nn.max_pool(x, (2,2), (1,1), padding="VALID")
-            x = layers.max_pooling2d(x, pool_size=[2,2], strides=1)
+            x = layers.max_pooling2d(x, pool_size=[2, 2], strides=1)
+            if big:
+                x = tf.nn.relu(U.conv2d(x, 100, "l3", pad="VALID"))
+
             x = U.flattenallbut0(x)
-            x = tf.nn.relu(U.dense(x, 100, 'lin', U.normc_initializer(1.0)))
+            if big:
+                x = tf.nn.relu(
+                    U.dense(x, 200, 'lin1', U.normc_initializer(1.0)))
+                x = tf.nn.relu(
+                    U.dense(x, 100, 'lin2', U.normc_initializer(1.0)))
+            else:
+                x = tf.nn.relu(
+                    U.dense(x, 100, 'lin1', U.normc_initializer(1.0)))
             self.vpred = U.dense(x, 1, "value", U.normc_initializer(1.0))
             self.vpredz = self.vpred
 

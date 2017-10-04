@@ -6,10 +6,11 @@ import torch.utils.data as data
 
 class GridworldData(data.Dataset):
     def __init__(self, file, imsize, train=True, 
-                    transform=None, target_transform=None):
+                    transform=None, target_transform=None, gpu=False):
         assert file.endswith('.npz') # Must be .npz format
         self.file = file
         self.imsize = imsize
+        self.gpu = gpu
         self.transform = transform
         self.target_transform = target_transform
         self.train = train # training set or test set
@@ -38,7 +39,11 @@ class GridworldData(data.Dataset):
 #        img[1].div_(10)
 #        return img
 #        return img, int(s1), int(s2), int(label)
-        return img.cuda(), torch.LongTensor([int(s1), int(s2)]).cuda()
+        if self.gpu:
+            return img.cuda(), torch.LongTensor([int(s1), int(s2)]).cuda()
+        else:
+            return img, torch.LongTensor([int(s1), int(s2)])
+
         
 
     def __len__(self):

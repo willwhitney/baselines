@@ -1,3 +1,20 @@
+# Running gridworld experiments with TRPO
+
+command: 
+`mpirun -np {cores} python -m baselines.trpo_mpi.run_gridworld {flags}`
+
+grid:
+
+```
+curriculum: [0, 1], # advance to step k+1 when reward is >= 1 - k/35
+walldeath: [0, 1], # episode ends if the agent runs into a wall
+env-size: [8],
+max-kl: [0.01, 0.001],
+lam: [1.0, 0.98],
+seed: [0, 1, 2],
+```
+
+
 <img src="data/logo.jpg" width=25% align="right" />
 
 # Baselines

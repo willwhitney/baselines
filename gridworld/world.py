@@ -9,6 +9,7 @@ import gym
 from gym import core, spaces
 from gridworld.dataset import *
 from gridworld.gridworld import *
+from gridworld.matlab_dataloader import GridWorldLoader
 from gym.envs.registration import register
 
 register(
@@ -79,23 +80,31 @@ class Environment(nn.Module):
         return s, r
 
 class StatefulEnv(core.Env):
-    def __init__(self, flatten=False):
-        size = 8
-        dataset = GridworldData(
-            'gridworld/gridworld_{}x{}.npz'.format(size, size), 
-            imsize=size, train=True, transform=None)
+    def __init__(self):
+        pass
+    
+    def setup(self, flatten=False, size=8, curriculum=True, walldeath=False):
+        self.size = size
+        # dataset = GridworldData(
+        #     'gridworld/gridworld_{}x{}.npz'.format(size, size), 
+        #     imsize=size, train=True, transform=None)
+        dataset = GridWorldLoader(
+            'gridworld/gridworld_{}.mat'.format(size), 
+            gridsize=size)
         self.dataset = dataset
         self.flatten = flatten
+        self.curriculum = curriculum
+        self.walldeath = walldeath
         self.action_space = spaces.Discrete(4)
 
         if flatten:
             img_dims = 3 * size * size
         else:
-            img_dims = (dataset.imsize, dataset.imsize, 3)
+            img_dims = (size, size, 3)
         self.observation_space = spaces.Box(low=0, high=1, shape=img_dims)
         self.index = 0
         self.max_difficulty = 1
-        self.reset()
+        self._reset()
 
     def _step(self, action):
         walls = self.world[0]
@@ -118,7 +127,8 @@ class StatefulEnv(core.Env):
         elif walls[new_location[0]][new_location[1]] == 1:
             reward = -1.0 # bump into wall, do not move and get negative reward
             new_location = self.agent_loc.clone()
-            # done = True
+            # if bumping the wall kills the agent, we're done here
+            done = self.walldeath
         else:
             # move, get small negative reward
             reward = -0.01
@@ -150,7 +160,11 @@ class StatefulEnv(core.Env):
         return d[current_loc_index]
 
     def advance_curriculum(self):
-        self.max_difficulty += 1
+        # only advance the curriculum if (we believe that) there are still 
+        # harder environments than we currently train on
+        if self.has_skipped:
+            self.max_difficulty += 1
+            self.has_skipped = False
 
     def _get_obs(self):
         agent_map = self.world[0].clone().zero_()
@@ -181,9 +195,13 @@ class StatefulEnv(core.Env):
         self.index = random.randint(0, len(self.dataset))
         self.world = self.dataset[self.index % len(self.dataset)][0]
         self.agent_loc = self.dataset[self.index % len(self.dataset)][1]
-        # ipdb.set_trace()
-        if self.get_current_distance() > self.max_difficulty:
-            self._reset()
+        
+        if self.curriculum:
+            distance = self.get_current_distance()
+            if distance > self.max_difficulty:
+                if np.isfinite(distance):
+                    self.has_skipped = True
+                self._reset()
         # else:
             # return self._get_obs()
         # print("Distance: ", self.get_current_distance())
