@@ -70,13 +70,33 @@ def add_vtarg_and_adv(seg, gamma, lam):
     new = np.append(seg["new"], 0) # last element is only used for last vtarg, but we already zeroed it if last new = 1
     vpred = np.append(seg["vpred"], seg["nextvpred"])
     T = len(seg["rew"])
-    seg["adv"] = gaelam = np.empty(T, 'float32')
+    seg["adv"] = np.empty(T, 'float32')
+    gaelam = seg["adv"]
     rew = seg["rew"]
     lastgaelam = 0
     for t in reversed(range(T)):
         nonterminal = 1-new[t+1]
         delta = rew[t] + gamma * vpred[t+1] * nonterminal - vpred[t]
-        gaelam[t] = lastgaelam = delta + gamma * lam * nonterminal * lastgaelam
+        # import ipdb; ipdb.set_trace()
+        try:
+            lastgaelam = delta + gamma * lam * nonterminal * lastgaelam
+            gaelam[t] = lastgaelam
+        except:
+            print("\n\nBAD:")
+            print("delta: ", delta)
+            print("gamma: ", gamma)
+            print("lam: ", lam)
+            print("nonterminal: ", nonterminal)
+            print("lastgaelam: ", lastgaelam)
+            print("\n\n")
+            import ipdb; ipdb.set_trace()
+            raise
+        # print("\nGOOD:")
+        # print("delta: ", delta)
+        # print("gamma: ", gamma)
+        # print("lam: ", lam)
+        # print("nonterminal: ", nonterminal)
+        # print("lastgaelam: ", lastgaelam)
     seg["tdlamret"] = seg["adv"] + seg["vpred"]
 
 def learn(env, policy_func, *,
@@ -91,8 +111,10 @@ def learn(env, policy_func, *,
         callback=None
         ):
     nworkers = MPI.COMM_WORLD.Get_size()
-    print("Using {} workers.".format(nworkers))
     rank = MPI.COMM_WORLD.Get_rank()
+    print("Process {} out of {} workers.".format(rank, nworkers))
+    import sys
+    print("Python version: {}".format(sys.version))
     np.set_printoptions(precision=3)    
     # Setup losses and stuff
     # ----------------------------------------

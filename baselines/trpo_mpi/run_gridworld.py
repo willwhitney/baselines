@@ -82,13 +82,13 @@ def main():
                         help='whether to train using a curriculum')
     parser.add_argument('--seed', default=0, help='RNG seed', type=int)
     parser.add_argument('--max-kl', help='KL divergence for policy updates',
-                        default=0.01)
-    parser.add_argument('--gamma', default=0.98, help='discount factor')
-    parser.add_argument('--lam', default=0.98,
+                        default=0.01, type=float)
+    parser.add_argument('--gamma', default=0.98, type=float, help='discount factor')
+    parser.add_argument('--lam', default=0.98, type=float,
                         help='exponential decay of k-step estimator for GAE')
-    parser.add_argument('--vf_iters', default=3,
+    parser.add_argument('--vf_iters', default=3, type=int,
                         help='steps to take on value function')
-    parser.add_argument('--vf_stepsize', default=1e-4,
+    parser.add_argument('--vf_stepsize', default=1e-4, type=float,
                         help='steps to take on value function')
     args = parser.parse_args()
 

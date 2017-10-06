@@ -35,3 +35,6 @@ src
 results/
 **.mat
 **.npz
+
+slurm_logs/
+slurm_scripts/

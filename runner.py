@@ -12,7 +12,12 @@ if not os.path.exists("slurm_logs"):
 if not os.path.exists("slurm_scripts"):
     os.makedirs("slurm_scripts")
 
-basename = "trpo_8x8"
+basename = "trpo_8x8_mpi"
+# grids = [
+#     {
+#         "curriculum": [1],  # advance to step k+1 when reward is >= 1 - k/35
+#     }
+# ]
 grids = [
     {
         "curriculum": [0, 1],  # advance to step k+1 when reward is >= 1 - k/35
@@ -73,7 +78,8 @@ for job in jobs:
                 jobname = jobname + "_" + flag + str(job[flag])
     flagstring = flagstring + " --name " + jobname
 
-    jobcommand = ("mpirun -np 8 "
+    jobcommand = ("mpirun -n 8 --oversubscribe "
+#     jobcommand = (""
                   "python -m baselines.trpo_mpi.run_gridworld") + flagstring
     print(jobcommand)
 
@@ -91,9 +97,10 @@ for job in jobs:
             slurmfile.write("#SBATCH --output=slurm_logs/" +
                             jobname + ".out\n")
             slurmfile.write("#SBATCH --error=slurm_logs/" + jobname + ".err\n")
-            slurmfile.write(jobcommand)
+            slurmfile.write(jobcommand + "\n")
+
 
         if not dry_run:
             os.system((
-                "sbatch -c 8 --gres=gpu:1 --mem=60000 "
+                "sbatch --nodes 1 -c 8 --mem=32000 "
                 "--time=2-00:00:00 slurm_scripts/" + jobname + ".slurm &"))
