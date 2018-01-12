@@ -368,7 +368,7 @@ def learn(env, test_env, policy_func, *,
             logger.record_tabular("TrainingMode", False)
             logger.record_tabular("EpisodesSoFar", episodes_so_far)
             logger.record_tabular("TimestepsSoFar", timesteps_so_far)
-            logger.record_tabular("EpDifficulty", test_env.env.env.max_difficulty)
+            logger.record_tabular("EpDifficulty", test_env.env.max_difficulty)
             logger.record_tabular("EpAccuracy", float(correct) / float(total))
             logger.record_tabular("EpRewMean", np.mean(rews))
 
