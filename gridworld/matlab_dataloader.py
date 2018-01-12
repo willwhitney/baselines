@@ -22,6 +22,16 @@ class GridWorldLoader(object):
         self.n_samples = len(self.data['im_data'])
         self.gridsize = gridsize
 
+        if 'im_data' not in self.data:
+            assert('all_im_data' in self.data)
+            self.data['im_data'] = self.data['all_im_data']
+        if 'value_data' not in self.data:
+            assert('all_value_data' in self.data)
+            self.data['value_data'] = self.data['all_value_data']
+        ipdb.set_trace()
+        # if 'im_data' not in self.data:
+        #     assert('all_im_data' in self.data)
+        #     self.data['im_data'] = self.data['all_im_data']
     # def get_batch(self, batch_size):
     #     self.world.resize_(batch_size, 2, self.gridsize, self.gridsize)
     #     self.state.resize_(batch_size, 2)

@@ -41,7 +41,7 @@ def traj_segment_generator(pi, env, horizon, stochastic):
             yield {"ob" : obs, "rew" : rews, "vpred" : vpreds, "new" : news,
                     "ac" : acs, "prevac" : prevacs, "nextvpred": vpred * (1 - new),
                     "ep_rets" : ep_rets, "ep_lens" : ep_lens}
-            _, vpred = pi.act(stochastic, ob)            
+            _, vpred = pi.act(stochastic, ob)
             # Be careful!!! if you change the downstream algorithm to aggregate
             # several of these batches, then be sure to do a deepcopy
             ep_rets = []
@@ -99,7 +99,20 @@ def add_vtarg_and_adv(seg, gamma, lam):
         # print("lastgaelam: ", lastgaelam)
     seg["tdlamret"] = seg["adv"] + seg["vpred"]
 
-def learn(env, policy_func, *,
+def successes(seg):
+    zipped_rewards = list(zip(seg['new'], seg['rew']))
+    episode_successes = []
+    for i in range(len(zipped_rewards) - 1):
+        # if the next step starts a new episode, ie this is the last step:
+        if zipped_rewards[i + 1][0] == 1:
+            # episode was a success if it ends in a reward,
+            # otherwise a failure
+            success = 1 if zipped_rewards[i][1] > 0 else 0
+            episode_successes.append(success)
+    return episode_successes
+
+
+def learn(env, test_env, policy_func, *,
         timesteps_per_batch, # what to train on
         max_kl, cg_iters,
         gamma, lam, # advantage estimation
@@ -115,7 +128,7 @@ def learn(env, policy_func, *,
     print("Process {} out of {} workers.".format(rank, nworkers))
     import sys
     print("Python version: {}".format(sys.version))
-    np.set_printoptions(precision=3)    
+    np.set_printoptions(precision=3)
     # Setup losses and stuff
     # ----------------------------------------
     ob_space = env.observation_space
@@ -180,7 +193,7 @@ def learn(env, policy_func, *,
             print(colorize("done in %.3f seconds"%(time.time() - tstart), color='magenta'))
         else:
             yield
-    
+
     def allmean(x):
         assert isinstance(x, np.ndarray)
         out = np.empty_like(x)
@@ -198,6 +211,7 @@ def learn(env, policy_func, *,
     # Prepare for rollouts
     # ----------------------------------------
     seg_gen = traj_segment_generator(pi, env, timesteps_per_batch, stochastic=True)
+    test_seg_gen = traj_segment_generator(pi, test_env, timesteps_per_batch, stochastic=True)
 
     episodes_so_far = 0
     timesteps_so_far = 0
@@ -208,7 +222,7 @@ def learn(env, policy_func, *,
 
     assert sum([max_iters>0, max_timesteps>0, max_episodes>0])==1
 
-    while True:        
+    while True:
         if callback: callback(locals(), globals())
         if max_timesteps and timesteps_so_far >= max_timesteps:
             break
@@ -283,7 +297,7 @@ def learn(env, policy_func, *,
         with timed("vf"):
 
             for _ in range(vf_iters):
-                for (mbob, mbret) in dataset.iterbatches((seg["ob"], seg["tdlamret"]), 
+                for (mbob, mbret) in dataset.iterbatches((seg["ob"], seg["tdlamret"]),
                 include_final_partial_batch=False, batch_size=64):
                     g = allmean(compute_vflossandgrad(mbob, mbret))
                     vfadam.update(g, vf_stepsize)
@@ -291,25 +305,23 @@ def learn(env, policy_func, *,
         logger.record_tabular("ev_tdlam_before", explained_variance(vpredbefore, tdlamret))
         logger.record_tabular("EpDifficulty", env.env.env.max_difficulty)
 
-        zipped_rewards = list(zip(seg['new'], seg['rew']))
-        episode_successes = []
-        for i in range(len(zipped_rewards) - 1):
-            # if the next step starts a new episode, ie this is the last step:
-            if zipped_rewards[i + 1][0] == 1:
-                # episode was a success if it ends in a reward,
-                # otherwise a failure
-                success = 1 if zipped_rewards[i][1] > 0 else 0
-                episode_successes.append(success)
-        accuracy = sum(episode_successes) / len(episode_successes)
-        logger.record_tabular("EpAccuracy", accuracy)
-            
-
         # import ipdb; ipdb.set_trace()
         lrlocal = (seg["ep_lens"], seg["ep_rets"]) # local values
         listoflrpairs = MPI.COMM_WORLD.allgather(lrlocal) # list of tuples
         lens, rews = map(flatten_lists, zip(*listoflrpairs))
         lenbuffer.extend(lens)
         rewbuffer.extend(rews)
+
+
+        batch_successes = successes(seg)
+        listofsuccesses = MPI.COMM_WORLD.allgather(batch_successes)
+        correct = 0
+        total = 0
+        for thread_tally in listofsuccesses:
+            correct += sum(thread_tally)
+            total += len(thread_tally)
+        logger.record_tabular("EpAccuracy", float(correct) / float(total))
+
 
         # import ipdb; ipdb.set_trace()
         # env is the multiply-wrapped:
@@ -329,9 +341,39 @@ def learn(env, policy_func, *,
         logger.record_tabular("EpisodesSoFar", episodes_so_far)
         logger.record_tabular("TimestepsSoFar", timesteps_so_far)
         logger.record_tabular("TimeElapsed", time.time() - tstart)
+        logger.record_tabular("TrainingMode", True)
 
         if rank==0:
             logger.dump_tabular()
+
+        if episodes_so_far % 10 == 0:
+            test_seg = test_seg_gen.__next__()
+            add_vtarg_and_adv(test_seg, gamma, lam)
+
+            # ob, ac, atarg, ret, td1ret = map(np.concatenate, (obs, acs, atargs, rets, td1rets))
+            ob, ac, atarg, tdlamret = test_seg["ob"], test_seg["ac"], test_seg["adv"], test_seg["tdlamret"]
+
+            lrlocal = (test_seg["ep_lens"], test_seg["ep_rets"]) # local values
+            listoflrpairs = MPI.COMM_WORLD.allgather(lrlocal) # list of tuples
+            lens, rews = map(flatten_lists, zip(*listoflrpairs))
+
+            test_batch_successes = successes(test_seg)
+            listoftestsuccesses = MPI.COMM_WORLD.allgather(test_batch_successes)
+            correct = 0
+            total = 0
+            for thread_tally in listoftestsuccesses:
+                correct += sum(thread_tally)
+                total += len(thread_tally)
+
+            logger.record_tabular("TrainingMode", False)
+            logger.record_tabular("EpisodesSoFar", episodes_so_far)
+            logger.record_tabular("TimestepsSoFar", timesteps_so_far)
+            logger.record_tabular("EpDifficulty", test_env.env.env.max_difficulty)
+            logger.record_tabular("EpAccuracy", float(correct) / float(total))
+            logger.record_tabular("EpRewMean", np.mean(rews))
+
+            if rank==0:
+                logger.dump_tabular()
 
 def flatten_lists(listoflists):
     return [el for list_ in listoflists for el in list_]

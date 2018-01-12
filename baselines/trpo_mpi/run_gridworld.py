@@ -43,6 +43,13 @@ def train(args, num_frames, seed):
     env.observation_space = real_base_env.observation_space
     env.action_space = real_base_env.action_space
 
+    test_env = gym.make('GridWorld-v0')
+    real_test_env = env.env
+    real_test_env.setup(size=args.env_size, curriculum=False,
+                        walldeath=args.walldeath)
+    test_env.observation_space = real_test_env.observation_space
+    test_env.action_space = real_test_env.action_space
+
     def policy_fn(name, ob_space, ac_space):  # pylint: disable=W0613
         # ipdb.set_trace()
         return SmallCnnPolicy(name=name,
@@ -60,9 +67,9 @@ def train(args, num_frames, seed):
     num_timesteps = int(num_frames)
     env.seed(workerseed)
 
-    trpo_mpi.learn(env, policy_fn,
+    trpo_mpi.learn(env, test_env, policy_fn,
                    timesteps_per_batch=1024, max_kl=args.max_kl, cg_iters=10, cg_damping=1e-3,
-                   max_timesteps=num_timesteps, gamma=args.gamma, lam=args.lam, 
+                   max_timesteps=num_timesteps, gamma=args.gamma, lam=args.lam,
                    vf_iters=args.vf_iters, vf_stepsize=args.vf_stepsize, entcoeff=0.0)
 
     # trpo_mpi.learn(env, policy_fn, timesteps_per_batch=512, max_kl=0.001, cg_iters=10, cg_damping=1e-3,

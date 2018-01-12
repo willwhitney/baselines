@@ -44,11 +44,11 @@ class Environment(nn.Module):
         return s, r
 
     # s0: 2d vector representing agent's coordinates on the grid
-    # world: 2 x imsize x imsize tensor, first channel indicates wall, second the goal. 
+    # world: 2 x imsize x imsize tensor, first channel indicates wall, second the goal.
     # a: action sequence
     def forward_single(self, s0, a, world, T):
         walls = world[0]
-        goals = world[1]            
+        goals = world[1]
         s = []
         r = []
         s.append(s0)
@@ -74,7 +74,7 @@ class Environment(nn.Module):
                 r.append(-0.01)
 
             s.append(s_new)
-                
+
         s = torch.stack(s)
         r = torch.Tensor(r)
         return s, r
@@ -82,14 +82,15 @@ class Environment(nn.Module):
 class StatefulEnv(core.Env):
     def __init__(self):
         pass
-    
-    def setup(self, flatten=False, size=8, curriculum=True, walldeath=False):
+
+    def setup(self, flatten=False, size=8, curriculum=True, walldeath=False, test=False):
         self.size = size
         # dataset = GridworldData(
-        #     'gridworld/gridworld_{}x{}.npz'.format(size, size), 
+        #     'gridworld/gridworld_{}x{}.npz'.format(size, size),
         #     imsize=size, train=True, transform=None)
+        mode_string = "_test" if test else ""
         dataset = GridWorldLoader(
-            'gridworld/gridworld_{}.mat'.format(size), 
+            'gridworld/gridworld_{}{}.mat'.format(size, mode_string),
             gridsize=size)
         self.dataset = dataset
         self.flatten = flatten
@@ -103,7 +104,7 @@ class StatefulEnv(core.Env):
             img_dims = (size, size, 3)
         self.observation_space = spaces.Box(low=0, high=1, shape=img_dims)
         self.index = 0
-        self.max_difficulty = 1
+        self.max_difficulty = 1 if curriculum else -1
         self._reset()
 
     def _step(self, action):
@@ -119,7 +120,7 @@ class StatefulEnv(core.Env):
             new_location[1] -= 1 # left
         if action == 3:
             new_location[1] += 1 # right
-        
+
         done = False
         if goals[new_location[0]][new_location[1]] == 10:
             reward = 1.0 # reached goal, get reward
@@ -160,9 +161,9 @@ class StatefulEnv(core.Env):
         return d[current_loc_index]
 
     def advance_curriculum(self):
-        # only advance the curriculum if (we believe that) there are still 
+        # only advance the curriculum if (we believe that) there are still
         # harder environments than we currently train on
-        if self.has_skipped:
+        if self.has_skipped and self.curriculum:
             self.max_difficulty += 1
             self.has_skipped = False
 
@@ -170,7 +171,7 @@ class StatefulEnv(core.Env):
         agent_map = self.world[0].clone().zero_()
         agent_map[self.agent_loc[0], self.agent_loc[1]] = 1
         full_obs = torch.cat([self.world, agent_map.unsqueeze(0)], 0)
-        
+
         # agent_map[self.agent_loc[0], self.agent_loc[1]] = -10
         # full_obs = torch.cat([self.world, agent_map.unsqueeze(0)], 0)
         # full_obs = torch.sum(full_obs, 0)
@@ -184,7 +185,7 @@ class StatefulEnv(core.Env):
 
     def _get_human_obs(self):
         agent_map = self.world[0].clone().zero_()
-        
+
         agent_map[self.agent_loc[0], self.agent_loc[1]] = 100
         full_obs = torch.cat([self.world, agent_map.unsqueeze(0)], 0)
         full_obs = torch.sum(full_obs, 0)
@@ -195,7 +196,7 @@ class StatefulEnv(core.Env):
         self.index = random.randint(0, len(self.dataset))
         self.world = self.dataset[self.index % len(self.dataset)][0]
         self.agent_loc = self.dataset[self.index % len(self.dataset)][1]
-        
+
         if self.curriculum:
             distance = self.get_current_distance()
             if distance > self.max_difficulty:
