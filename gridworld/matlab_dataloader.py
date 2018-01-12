@@ -19,7 +19,6 @@ class GridWorldLoader(object):
         self.data = scipy.io.loadmat(path)
         self.world = torch.FloatTensor()
         self.state = torch.LongTensor()
-        self.n_samples = len(self.data['im_data'])
         self.gridsize = gridsize
 
         if 'im_data' not in self.data:
@@ -29,6 +28,9 @@ class GridWorldLoader(object):
             assert('all_value_data' in self.data)
             self.data['value_data'] = self.data['all_value_data']
         ipdb.set_trace()
+
+        self.n_samples = len(self.data['im_data'])
+
         # if 'im_data' not in self.data:
         #     assert('all_im_data' in self.data)
         #     self.data['im_data'] = self.data['all_im_data']
