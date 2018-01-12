@@ -34,7 +34,7 @@ class GridWorldLoader(object):
                 self.data['state_xy_data'].append(np.array([
                     self.data['all_states_xy'][i][0][0][1]-1,
                     self.data['all_states_xy'][i][0][0][0]-1]))
-        ipdb.set_trace()
+        # ipdb.set_trace()
 
         self.n_samples = len(self.data['im_data'])
 
@@ -68,7 +68,7 @@ class GridWorldLoader(object):
         assert(world[state[0]][state[1]] == 0)
         # self.world[b][0].copy_(world)
         # self.world[b][1].copy_(goal)
-        # ipdb.set_trace()
+        ipdb.set_trace()
         return torch.stack([world, goal]).float(), state.long()
         # self.state[b].copy_(state)
 
