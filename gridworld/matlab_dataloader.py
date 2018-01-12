@@ -31,7 +31,7 @@ class GridWorldLoader(object):
             assert('all_states_xy' in self.data)
             self.data['state_xy_data'] = []
             for i, state in enumerate(self.data['all_states_xy']):
-                self.data['state_xy_data'][i] = self.data['all_states_xy'][i][0][0]
+                self.data['state_xy_data'].append(self.data['all_states_xy'][i][0][0])
         ipdb.set_trace()
 
         self.n_samples = len(self.data['im_data'])
