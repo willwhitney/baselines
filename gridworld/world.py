@@ -92,6 +92,7 @@ class StatefulEnv(core.Env):
         dataset = GridWorldLoader(
             'gridworld/gridworld_{}{}.mat'.format(size, mode_string),
             gridsize=size)
+        # import ipdb; ipdb.set_trace()
         self.dataset = dataset
         self.flatten = flatten
         self.curriculum = curriculum

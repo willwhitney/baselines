@@ -44,7 +44,7 @@ def train(args, num_frames, seed):
     env.action_space = real_base_env.action_space
 
     test_env = gym.make('GridWorld-v0')
-    real_test_env = env.env
+    real_test_env = test_env.env
     real_test_env.setup(size=args.env_size, curriculum=False,
                         walldeath=args.walldeath)
     test_env.observation_space = real_test_env.observation_space
