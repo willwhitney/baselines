@@ -27,6 +27,11 @@ class GridWorldLoader(object):
         if 'value_data' not in self.data:
             assert('all_value_data' in self.data)
             self.data['value_data'] = self.data['all_value_data']
+        if 'state_xy_data' not in self.data:
+            assert('all_states_xy' in self.data)
+            self.data['state_xy_data'] = []
+            for i, state in enumerate(self.data['all_states_xy']):
+                self.data['state_xy_data'][i] = self.data['all_states_xy'][i][0][0]
         ipdb.set_trace()
 
         self.n_samples = len(self.data['im_data'])
