@@ -68,8 +68,8 @@ class GridWorldLoader(object):
         assert(world[state[0]][state[1]] == 0)
         # self.world[b][0].copy_(world)
         # self.world[b][1].copy_(goal)
-        ipdb.set_trace()
-        return torch.stack([world, goal]).float(), state.long()
+        # ipdb.set_trace()
+        return torch.stack([world.float(), goal.float()]).float(), state.long()
         # self.state[b].copy_(state)
 
     def __len__(self):
