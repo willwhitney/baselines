@@ -12,7 +12,7 @@ if not os.path.exists("slurm_logs"):
 if not os.path.exists("slurm_scripts"):
     os.makedirs("slurm_scripts")
 
-basename = "trpo_8x8_mpi"
+basename = "trpo_16x16_test"
 # grids = [
 #     {
 #         "curriculum": [1],  # advance to step k+1 when reward is >= 1 - k/35
