@@ -103,4 +103,4 @@ for job in jobs:
         if not dry_run:
             os.system((
                 "sbatch --nodes 1 -c 8 --mem=32000 "
-                "--time=2-00:00:00 slurm_scripts/" + jobname + ".slurm &"))
+                "--time=7-00:00:00 slurm_scripts/" + jobname + ".slurm &"))
